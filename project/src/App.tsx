@@ -41,7 +41,10 @@ const defaultPortfolio: Portfolio = {
 
 function Layout({ children }: { children: React.ReactNode }) {
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error('Error signing out:', error.message);
+    }
   };
 
   return (
@@ -116,36 +119,27 @@ function PortfolioPage() {
         .from('portfolios')
         .select('*')
         .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
 
       if (error) {
-        throw error;
-      }
-
-      if (data && data.length > 0) {
-        const mostRecentPortfolio = data[0];
-        setPortfolio(mostRecentPortfolio.portfolio_data);
-
-        if (data.length > 1) {
-          const oldPortfolioIds = data.slice(1).map(p => p.id);
-          await supabase
+        if (error.code === 'PGRST116') {
+          // No data found, create new portfolio
+          const { error: insertError } = await supabase
             .from('portfolios')
-            .delete()
-            .in('id', oldPortfolioIds);
-        }
-      } else {
-        const { error: insertError } = await supabase
-          .from('portfolios')
-          .insert({
-            user_id: userId,
-            portfolio_data: defaultPortfolio,
-          });
+            .insert({
+              user_id: userId,
+              portfolio_data: defaultPortfolio,
+            });
 
-        if (insertError) {
-          throw insertError;
+          if (insertError) throw insertError;
+          setPortfolio(defaultPortfolio);
+        } else {
+          throw error;
         }
-
-        setPortfolio(defaultPortfolio);
+      } else if (data) {
+        setPortfolio(data.portfolio_data);
       }
     } catch (err) {
       console.error('Error loading portfolio:', err);
@@ -165,24 +159,23 @@ function PortfolioPage() {
         .select('*')
         .eq('user_id', session.user.id)
         .order('created_at', { ascending: false })
-        .limit(1);
+        .limit(1)
+        .single();
 
-      if (error) {
+      if (error && error.code !== 'PGRST116') {
         throw error;
       }
 
-      if (data && data.length > 0) {
+      if (data) {
         const { error: updateError } = await supabase
           .from('portfolios')
           .update({ 
             portfolio_data: updatedPortfolio,
             updated_at: new Date().toISOString()
           })
-          .eq('id', data[0].id);
+          .eq('id', data.id);
 
-        if (updateError) {
-          throw updateError;
-        }
+        if (updateError) throw updateError;
       } else {
         const { error: insertError } = await supabase
           .from('portfolios')
@@ -191,9 +184,7 @@ function PortfolioPage() {
             portfolio_data: updatedPortfolio,
           });
 
-        if (insertError) {
-          throw insertError;
-        }
+        if (insertError) throw insertError;
       }
 
       setPortfolio(updatedPortfolio);
@@ -211,7 +202,6 @@ function PortfolioPage() {
       ...portfolio,
       stocks: [...portfolio.stocks, stock],
     };
-    setPortfolio(updatedPortfolio);
     await savePortfolio(updatedPortfolio);
   };
 
@@ -220,7 +210,6 @@ function PortfolioPage() {
       ...portfolio,
       stocks: portfolio.stocks.filter((stock) => stock.symbol !== symbol),
     };
-    setPortfolio(updatedPortfolio);
     await savePortfolio(updatedPortfolio);
   };
 
@@ -230,7 +219,6 @@ function PortfolioPage() {
       investmentGoal: goal,
       targetDate: date,
     };
-    setPortfolio(updatedPortfolio);
     await savePortfolio(updatedPortfolio);
   };
 
@@ -240,6 +228,10 @@ function PortfolioPage() {
       return total + currentPrice * stock.shares;
     }, 0);
   };
+
+  if (!session) {
+    return null;
+  }
 
   return (
     <>
@@ -292,6 +284,10 @@ function App() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  if (session === null) {
+    return <div className="h-screen flex items-center justify-center">Loading...</div>;
+  }
 
   if (!session) {
     return <Auth onAuthSuccess={() => {}} />;

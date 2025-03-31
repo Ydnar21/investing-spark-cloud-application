@@ -1,5 +1,5 @@
 # Build stage
-FROM node:lts-alpine as builder
+FROM node:20-alpine as builder
 
 # Set working directory
 WORKDIR /app
@@ -37,7 +37,7 @@ RUN mkdir -p /tmp/nginx/client_temp && \
     chown -R appuser:appgroup /tmp/nginx && \
     chmod -R 755 /tmp/nginx
 
-# Create a minimal nginx.conf
+# Copy nginx configuration
 COPY nginx.conf /etc/nginx/nginx.conf
 
 # Copy built assets from builder stage
