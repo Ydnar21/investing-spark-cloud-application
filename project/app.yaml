@@ -14,19 +14,6 @@ env_variables:
   VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
 
 handlers:
-  - url: /assets
-    static_dir: dist/assets
-    secure: always
-    expiration: 365d
-
-  - url: /(.*\.(json|ico|js|css|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot))$
-    static_files: dist/\1
-    upload: dist/.*\.(json|ico|js|css|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot)$
-    secure: always
-    expiration: 365d
-
   - url: /.*
-    static_files: dist/index.html
-    upload: dist/index.html
+    script: auto
     secure: always
-    expiration: 0s
