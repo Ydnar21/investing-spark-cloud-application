@@ -8,6 +8,3 @@ node_modules/
 .vscode/
 .idea/
 README.md
-docker-compose.yml
-Dockerfile
-nginx.conf
