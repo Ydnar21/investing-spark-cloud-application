@@ -1,200 +1,311 @@
-import React, { useState, useRef } from 'react';
-import { Upload, X, Camera, Calendar, MapPin, Settings } from 'lucide-react';
-import exifr from 'exifr';
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { LineChart, Wallet, LogOut, Calculator } from 'lucide-react';
+import { supabase } from './lib/supabase';
+import Auth from './components/Auth';
+import PortfolioForm from './components/PortfolioForm';
+import PortfolioOverview from './components/PortfolioOverview';
+import PortfolioAnalytics from './components/PortfolioAnalytics';
+import GoalSetting from './components/GoalSetting';
+import NewsFeed from './components/NewsFeed';
+import OptionsCalculator from './components/OptionsCalculator';
+import type { Stock, Portfolio, StockNews, StockData } from './types';
 
-interface MetadataGroup {
-  title: string;
-  icon: React.ReactNode;
-  data: Record<string, string | number>;
-}
+// Simulated data - In a real app, this would come from an API
+const mockStockData: Record<string, StockData> = {
+  AAPL: { symbol: 'AAPL', price: 175.43, change: 2.31, changePercent: 1.32 },
+  GOOGL: { symbol: 'GOOGL', price: 142.89, change: -0.54, changePercent: -0.38 },
+  MSFT: { symbol: 'MSFT', price: 378.85, change: 4.23, changePercent: 1.12 },
+};
 
-function App() {
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [metadata, setMetadata] = useState<MetadataGroup[]>([]);
-  const [loading, setLoading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+const mockNews: StockNews[] = [
+  {
+    title: 'Apple Announces New iPhone Release Date',
+    url: 'https://example.com/news/1',
+    source: 'Tech News Daily',
+    publishedAt: '2024-03-15T10:30:00Z',
+  },
+  {
+    title: 'Google Cloud Reports Strong Q4 Growth',
+    url: 'https://example.com/news/2',
+    source: 'Business Insider',
+    publishedAt: '2024-03-14T15:45:00Z',
+  },
+];
 
-  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setLoading(true);
-      try {
-        // Create object URL for preview
-        const imageUrl = URL.createObjectURL(file);
-        setSelectedImage(imageUrl);
+const defaultPortfolio: Portfolio = {
+  stocks: [],
+  investmentGoal: 0,
+  targetDate: '',
+};
 
-        // Parse EXIF data
-        const exif = await exifr.parse(file);
-        
-        // Group metadata for display
-        const groupedMetadata: MetadataGroup[] = [
-          {
-            title: 'Camera Information',
-            icon: <Camera className="w-5 h-5" />,
-            data: {
-              'Camera Make': exif?.Make || 'N/A',
-              'Camera Model': exif?.Model || 'N/A',
-              'Lens Model': exif?.LensModel || 'N/A',
-              'Focal Length': exif?.FocalLength ? `${exif.FocalLength}mm` : 'N/A',
-              'Aperture': exif?.FNumber ? `f/${exif.FNumber}` : 'N/A',
-              'ISO': exif?.ISO || 'N/A',
-              'Shutter Speed': exif?.ExposureTime ? `1/${1/exif.ExposureTime}s` : 'N/A',
-            }
-          },
-          {
-            title: 'Time Information',
-            icon: <Calendar className="w-5 h-5" />,
-            data: {
-              'Date Taken': exif?.DateTimeOriginal ? new Date(exif.DateTimeOriginal).toLocaleString() : 'N/A',
-              'Date Modified': exif?.ModifyDate ? new Date(exif.ModifyDate).toLocaleString() : 'N/A',
-            }
-          },
-          {
-            title: 'Location',
-            icon: <MapPin className="w-5 h-5" />,
-            data: {
-              'Latitude': exif?.latitude || 'N/A',
-              'Longitude': exif?.longitude || 'N/A',
-            }
-          },
-          {
-            title: 'Technical Details',
-            icon: <Settings className="w-5 h-5" />,
-            data: {
-              'Dimensions': exif?.ExifImageWidth && exif?.ExifImageHeight ? 
-                `${exif.ExifImageWidth} × ${exif.ExifImageHeight}` : 'N/A',
-              'Color Space': exif?.ColorSpace || 'N/A',
-              'Software': exif?.Software || 'N/A',
-            }
-          }
-        ];
-
-        setMetadata(groupedMetadata);
-      } catch (error) {
-        console.error('Error parsing image metadata:', error);
-        setMetadata([]);
-      } finally {
-        setLoading(false);
-      }
-    }
-  };
-
-  const handleDrop = async (e: React.DragEvent) => {
-    e.preventDefault();
-    const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith('image/')) {
-      const input = fileInputRef.current;
-      if (input) {
-        const dataTransfer = new DataTransfer();
-        dataTransfer.items.add(file);
-        input.files = dataTransfer.files;
-        await handleImageUpload({ target: { files: dataTransfer.files } } as any);
-      }
-    }
-  };
-
-  const preventDefault = (e: React.DragEvent) => {
-    e.preventDefault();
+function Layout({ children }: { children: React.ReactNode }) {
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-4xl font-bold text-center text-gray-800 mb-8">
-          Photo Metadata Viewer
-        </h1>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Upload Section */}
-          <div 
-            className="bg-white rounded-xl shadow-lg p-6"
-            onDrop={handleDrop}
-            onDragOver={preventDefault}
-            onDragEnter={preventDefault}
-          >
-            <div 
-              className="border-2 border-dashed border-gray-300 rounded-lg h-80 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 transition-colors"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              {selectedImage ? (
-                <div className="relative w-full h-full">
-                  <img 
-                    src={selectedImage} 
-                    alt="Preview" 
-                    className="w-full h-full object-contain rounded-lg"
-                  />
-                  <button 
-                    className="absolute top-2 right-2 bg-red-500 p-2 rounded-full hover:bg-red-600 transition-colors"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedImage(null);
-                      setMetadata([]);
-                    }}
-                  >
-                    <X size={16} className="text-white" />
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <Upload size={48} className="text-gray-400 mb-4" />
-                  <p className="text-gray-500 text-center">
-                    <span className="font-medium">Click to upload</span> or drag and drop<br />
-                    your photo here
-                  </p>
-                </>
-              )}
-              <input
-                type="file"
-                ref={fileInputRef}
-                className="hidden"
-                accept="image/*"
-                onChange={handleImageUpload}
-              />
+    <div className="min-h-screen bg-gray-100">
+      <header className="bg-white shadow">
+        <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center space-x-8">
+              <Link to="/" className="text-3xl font-bold text-gray-900 flex items-center">
+                <Wallet className="w-8 h-8 mr-3 text-blue-600" />
+                Stock Portfolio
+              </Link>
+              <nav className="flex space-x-4">
+                <Link
+                  to="/options-calculator"
+                  className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium flex items-center"
+                >
+                  <Calculator className="w-4 h-4 mr-2" />
+                  Options Calculator
+                </Link>
+              </nav>
             </div>
-          </div>
-
-          {/* Metadata Display */}
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-6">
-              Image Metadata
-            </h2>
-            
-            {loading ? (
-              <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-              </div>
-            ) : metadata.length > 0 ? (
-              <div className="space-y-6">
-                {metadata.map((group, index) => (
-                  <div key={index} className="border-b border-gray-200 last:border-0 pb-4 last:pb-0">
-                    <div className="flex items-center gap-2 mb-3">
-                      {group.icon}
-                      <h3 className="text-lg font-medium text-gray-700">{group.title}</h3>
-                    </div>
-                    <div className="grid grid-cols-2 gap-y-2 text-sm">
-                      {Object.entries(group.data).map(([key, value]) => (
-                        <React.Fragment key={key}>
-                          <span className="text-gray-600">{key}:</span>
-                          <span className="text-gray-900 font-medium">{value}</span>
-                        </React.Fragment>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : selectedImage ? (
-              <div className="text-center text-gray-500 py-12">
-                No metadata found in this image
-              </div>
-            ) : (
-              <div className="text-center text-gray-500 py-12">
-                Upload an image to view its metadata
-              </div>
-            )}
+            <button
+              onClick={handleLogout}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+            >
+              <LogOut className="w-5 h-5 mr-2" />
+              Log Out
+            </button>
           </div>
         </div>
-      </div>
+      </header>
+      <main className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+        {children}
+      </main>
     </div>
+  );
+}
+
+function PortfolioPage() {
+  const [session, setSession] = useState(null);
+  const [portfolio, setPortfolio] = useState<Portfolio>(defaultPortfolio);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session) {
+        loadUserPortfolio(session.user.id);
+      }
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session) {
+        loadUserPortfolio(session.user.id);
+      } else {
+        setPortfolio(defaultPortfolio);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const loadUserPortfolio = async (userId: string) => {
+    try {
+      setError(null);
+      const { data, error } = await supabase
+        .from('portfolios')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data && data.length > 0) {
+        const mostRecentPortfolio = data[0];
+        setPortfolio(mostRecentPortfolio.portfolio_data);
+
+        if (data.length > 1) {
+          const oldPortfolioIds = data.slice(1).map(p => p.id);
+          await supabase
+            .from('portfolios')
+            .delete()
+            .in('id', oldPortfolioIds);
+        }
+      } else {
+        const { error: insertError } = await supabase
+          .from('portfolios')
+          .insert({
+            user_id: userId,
+            portfolio_data: defaultPortfolio,
+          });
+
+        if (insertError) {
+          throw insertError;
+        }
+
+        setPortfolio(defaultPortfolio);
+      }
+    } catch (err) {
+      console.error('Error loading portfolio:', err);
+      setError('Failed to load portfolio. Please try again.');
+    }
+  };
+
+  const savePortfolio = async (updatedPortfolio: Portfolio) => {
+    if (!session?.user?.id || isUpdating) return;
+
+    setIsUpdating(true);
+    setError(null);
+
+    try {
+      const { data, error } = await supabase
+        .from('portfolios')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (error) {
+        throw error;
+      }
+
+      if (data && data.length > 0) {
+        const { error: updateError } = await supabase
+          .from('portfolios')
+          .update({ 
+            portfolio_data: updatedPortfolio,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', data[0].id);
+
+        if (updateError) {
+          throw updateError;
+        }
+      } else {
+        const { error: insertError } = await supabase
+          .from('portfolios')
+          .insert({
+            user_id: session.user.id,
+            portfolio_data: updatedPortfolio,
+          });
+
+        if (insertError) {
+          throw insertError;
+        }
+      }
+
+      setPortfolio(updatedPortfolio);
+    } catch (err) {
+      console.error('Error saving portfolio:', err);
+      setError('Failed to save changes. Please try again.');
+      await loadUserPortfolio(session.user.id);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleAddStock = async (stock: Stock) => {
+    const updatedPortfolio = {
+      ...portfolio,
+      stocks: [...portfolio.stocks, stock],
+    };
+    setPortfolio(updatedPortfolio);
+    await savePortfolio(updatedPortfolio);
+  };
+
+  const handleRemoveStock = async (symbol: string) => {
+    const updatedPortfolio = {
+      ...portfolio,
+      stocks: portfolio.stocks.filter((stock) => stock.symbol !== symbol),
+    };
+    setPortfolio(updatedPortfolio);
+    await savePortfolio(updatedPortfolio);
+  };
+
+  const handleSetGoal = async (goal: number, date: string) => {
+    const updatedPortfolio = {
+      ...portfolio,
+      investmentGoal: goal,
+      targetDate: date,
+    };
+    setPortfolio(updatedPortfolio);
+    await savePortfolio(updatedPortfolio);
+  };
+
+  const calculateTotalValue = () => {
+    return portfolio.stocks.reduce((total, stock) => {
+      const currentPrice = mockStockData[stock.symbol]?.price || stock.purchasePrice;
+      return total + currentPrice * stock.shares;
+    }, 0);
+  };
+
+  return (
+    <>
+      {error && (
+        <div className="mb-6 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md">
+          {error}
+        </div>
+      )}
+      
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          <PortfolioForm onAddStock={handleAddStock} />
+          <PortfolioAnalytics
+            portfolio={portfolio.stocks}
+            stockData={mockStockData}
+          />
+          <PortfolioOverview
+            portfolio={portfolio.stocks}
+            stockData={mockStockData}
+            onRemoveStock={handleRemoveStock}
+          />
+        </div>
+        <div className="space-y-6">
+          <GoalSetting
+            onSetGoal={handleSetGoal}
+            currentValue={calculateTotalValue()}
+            investmentGoal={portfolio.investmentGoal}
+            targetDate={portfolio.targetDate}
+          />
+          <NewsFeed news={mockNews} />
+        </div>
+      </div>
+    </>
+  );
+}
+
+function App() {
+  const [session, setSession] = useState(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (!session) {
+    return <Auth onAuthSuccess={() => {}} />;
+  }
+
+  return (
+    <Router>
+      <Layout>
+        <Routes>
+          <Route path="/" element={<PortfolioPage />} />
+          <Route path="/options-calculator" element={<OptionsCalculator />} />
+        </Routes>
+      </Layout>
+    </Router>
   );
 }
 
