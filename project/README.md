@@ -70,22 +70,29 @@ The following test accounts are available:
 - Username: `randy` / Password: `admin`
 - Username: `karl` / Password: `karl`
 
-## Docker Deployment
+## Google Cloud Deployment
 
-The application includes Docker configuration for production deployment.
+1. **Install the Google Cloud SDK**
 
-1. **Build and run with Docker Compose**
+Follow the instructions at [Google Cloud SDK Installation](https://cloud.google.com/sdk/docs/install)
+
+2. **Initialize your project**
 
 ```bash
-docker-compose up -d
+gcloud init
 ```
 
-The application will be available at `http://localhost:8080`
-
-2. **Stop the containers**
+3. **Set environment variables**
 
 ```bash
-docker-compose down
+gcloud secrets create VITE_SUPABASE_URL --data-file=- <<< "your_supabase_url"
+gcloud secrets create VITE_SUPABASE_ANON_KEY --data-file=- <<< "your_supabase_anon_key"
+```
+
+4. **Deploy the application**
+
+```bash
+gcloud app deploy
 ```
 
 ### Docker Configuration Details
@@ -126,6 +133,44 @@ For production deployment, ensure these are properly set in your environment or 
 - `npm run build`: Build for production
 - `npm run preview`: Preview production build
 - `npm run lint`: Run ESLint
+
+## Common Issues and Solutions
+
+### Authentication Issues
+
+1. **"Invalid login credentials" error**
+   - Verify username and password are correct
+   - Check if the account exists
+   - Ensure Supabase connection is properly configured
+
+2. **Session not persisting**
+   - Clear browser cache and cookies
+   - Check if localStorage is enabled
+   - Verify Supabase configuration
+
+### Database Connection Issues
+
+1. **"Connection refused" error**
+   - Verify Supabase URL and anon key are correct
+   - Check if Supabase service is running
+   - Ensure firewall allows the connection
+
+2. **"Row level security violation" error**
+   - Verify user is authenticated
+   - Check RLS policies in Supabase dashboard
+   - Ensure user has correct permissions
+
+### Deployment Issues
+
+1. **Google Cloud deployment fails**
+   - Verify gcloud CLI is properly configured
+   - Check if all required environment variables are set
+   - Review deployment logs using `gcloud app logs tail`
+
+2. **Application not loading after deployment**
+   - Check if build process completed successfully
+   - Verify static files are being served correctly
+   - Review server logs for any errors
 
 ## Security Features
 
