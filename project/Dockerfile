@@ -19,26 +19,40 @@ RUN npm run build
 # Production stage
 FROM nginx:alpine
 
-# Add nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Remove default nginx configuration
+RUN rm /etc/nginx/conf.d/default.conf
+RUN rm -f /etc/nginx/nginx.conf
+
+# Create non-root user and group
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -u 1001 -S appuser -G appgroup
+
+# Create necessary directories with correct permissions
+RUN mkdir -p /tmp/nginx/client_temp && \
+    mkdir -p /tmp/nginx/proxy_temp && \
+    mkdir -p /tmp/nginx/fastcgi_temp && \
+    mkdir -p /tmp/nginx/uwsgi_temp && \
+    mkdir -p /tmp/nginx/scgi_temp && \
+    mkdir -p /tmp/nginx/run && \
+    chown -R appuser:appgroup /tmp/nginx && \
+    chmod -R 755 /tmp/nginx
+
+# Create a minimal nginx.conf
+COPY nginx.conf /etc/nginx/nginx.conf
 
 # Copy built assets from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Add non-root user
-RUN adduser -D -H -u 1001 -s /sbin/nologin www-data
-
-# Set proper permissions
-RUN chown -R www-data:www-data /usr/share/nginx/html && \
+# Set proper permissions for nginx html directory
+RUN chown -R appuser:appgroup /usr/share/nginx/html && \
     chmod -R 755 /usr/share/nginx/html && \
-    chown -R www-data:www-data /var/cache/nginx && \
-    chown -R www-data:www-data /var/log/nginx && \
-    chown -R www-data:www-data /etc/nginx/conf.d
+    chown -R appuser:appgroup /etc/nginx && \
+    chmod -R 755 /etc/nginx
 
 # Switch to non-root user
-USER www-data
+USER appuser
 
-# Expose port 8080 (non-privileged)
+# Expose port 8080
 EXPOSE 8080
 
 # Start nginx
