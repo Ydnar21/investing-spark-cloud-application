@@ -1,6 +1,8 @@
 runtime: nodejs20
 env: standard
 
+instance_class: F1
+
 automatic_scaling:
   target_cpu_utilization: 0.65
   min_instances: 1
@@ -8,14 +10,19 @@ automatic_scaling:
   target_throughput_utilization: 0.6
 
 env_variables:
-  VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
-  VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
+  VITE_SUPABASE_URL: "https://izhtkisjrmpncnmeaxcf.supabase.co"
+  VITE_SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml6aHRraXNqcm1wbmNubWVheGNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM0NDMwNjAsImV4cCI6MjA1OTAxOTA2MH0.eDvIDpARJGLcliGxqy-z-UNJzAgUf7meWuvKcNomF6A"
   NODE_ENV: "production"
 
 handlers:
-  - url: /.*
+  - url: /(.*\.(json|ico|js|css|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot))$
+    static_files: dist/\1
+    upload: dist/.*\.(json|ico|js|css|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot)$
     secure: always
-    redirect_http_response_code: 301
-    script: auto
+
+  - url: /.*
+    static_files: dist/index.html
+    upload: dist/index.html
+    secure: always
 
 entrypoint: node server.js
