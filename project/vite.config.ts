@@ -12,7 +12,7 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: true,
+    sourcemap: process.env.NODE_ENV === 'development',
     assetsDir: 'assets',
     rollupOptions: {
       output: {
@@ -22,6 +22,7 @@ export default defineConfig({
           icons: ['lucide-react']
         }
       }
-    }
+    },
+    chunkSizeWarningLimit: 1000
   }
 });
