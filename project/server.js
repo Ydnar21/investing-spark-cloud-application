@@ -18,12 +18,8 @@ app.use((req, res, next) => {
   next();
 });
 
-// Serve static files from the dist directory with caching
-app.use(express.static(path.join(__dirname, 'dist'), {
-  maxAge: '365d',
-  etag: true,
-  lastModified: true
-}));
+// Serve static files from the dist directory
+app.use(express.static(path.join(__dirname, 'dist')));
 
 // Handle all routes for SPA
 app.get('*', (req, res) => {
@@ -33,10 +29,14 @@ app.get('*', (req, res) => {
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Error:', err.stack);
-  res.status(500).send('Something broke!');
+  res.status(500).json({
+    error: 'Internal Server Error',
+    message: process.env.NODE_ENV === 'development' ? err.message : undefined
+  });
 });
 
-// Start the server
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
+  console.log('Environment:', process.env.NODE_ENV);
+  console.log('Static files directory:', path.join(__dirname, 'dist'));
 });
