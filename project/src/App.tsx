@@ -269,38 +269,47 @@ function PortfolioPage() {
 }
 
 function App() {
-  const [session, setSession] = useState(null);
+  const [session, setSession] = useState<any>(undefined);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Initialize session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
+      setLoading(false);
     });
 
+    // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  if (session === null) {
-    return <div className="h-screen flex items-center justify-center">Loading...</div>;
-  }
-
-  if (!session) {
-    return <Auth onAuthSuccess={() => {}} />;
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
   }
 
   return (
     <Router>
-      <Layout>
-        <Routes>
-          <Route path="/" element={<PortfolioPage />} />
-          <Route path="/options-calculator" element={<OptionsCalculator />} />
-        </Routes>
-      </Layout>
+      {!session ? (
+        <Auth onAuthSuccess={() => {}} />
+      ) : (
+        <Layout>
+          <Routes>
+            <Route path="/" element={<PortfolioPage />} />
+            <Route path="/options-calculator" element={<OptionsCalculator />} />
+          </Routes>
+        </Layout>
+      )}
     </Router>
   );
 }
