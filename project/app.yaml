@@ -11,10 +11,6 @@ env_variables:
   VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
 
 handlers:
-- url: /(.*\..+)$
-  static_files: dist/\1
-  upload: dist/(.*\..+)$
-  # catch all handler to index.html
-- url: /.*
-  static_files: dist/index.html
-  upload: dist/index.html
+  - url: /.*
+    script: auto
+    secure: always
